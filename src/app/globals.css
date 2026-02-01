@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 210 40% 98%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 212.7 26.8% 83.9%;
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-[hsl(var(--border))];
+  }
+  body {
+    @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))];
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Status colors */
+.status-up {
+  color: rgb(34 197 94);
+  background-color: rgb(34 197 94 / 0.1);
+}
+
+.status-down {
+  color: rgb(239 68 68);
+  background-color: rgb(239 68 68 / 0.1);
+}
+
+.status-degraded {
+  color: rgb(234 179 8);
+  background-color: rgb(234 179 8 / 0.1);
+}
+
+.status-timeout {
+  color: rgb(249 115 22);
+  background-color: rgb(249 115 22 / 0.1);
+}
+
+/* Animation utilities */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
+
+/* Dashboard grid */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1rem;
+}
+
+/* Region map */
+.region-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+}
+
+.region-dot.up {
+  background-color: rgb(34 197 94);
+}
+
+.region-dot.down {
+  background-color: rgb(239 68 68);
+}
+
+.region-dot.degraded {
+  background-color: rgb(234 179 8);
+}
+
+/* Incident severity badges */
+.severity-critical {
+  color: rgb(239 68 68);
+  background-color: rgb(239 68 68 / 0.2);
+  border: 1px solid rgb(239 68 68 / 0.3);
+}
+
+.severity-warning {
+  color: rgb(234 179 8);
+  background-color: rgb(234 179 8 / 0.2);
+  border: 1px solid rgb(234 179 8 / 0.3);
+}
+
+.severity-info {
+  color: rgb(59 130 246);
+  background-color: rgb(59 130 246 / 0.2);
+  border: 1px solid rgb(59 130 246 / 0.3);
+}
+
+/* SLO burn rate indicators */
+.burn-rate-normal {
+  color: rgb(34 197 94);
+}
+
+.burn-rate-warning {
+  color: rgb(234 179 8);
+}
+
+.burn-rate-critical {
+  color: rgb(239 68 68);
+}

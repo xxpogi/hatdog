@@ -1,0 +1,501 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Users & Authentication
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  name          String?
+  avatarUrl     String?   @map("avatar_url")
+  emailVerified DateTime? @map("email_verified")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+  
+  // Relations
+  ownedTeams    Team[]
+  memberships   TeamMember[]
+  sessions      Session[]
+  auditLogs     AuditLog[]
+  
+  @@index([email])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+// Teams & RBAC
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  avatarUrl   String?  @map("avatar_url")
+  settings    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+  
+  // Relations
+  ownerId     String   @map("owner_id")
+  owner       User     @relation(fields: [ownerId], references: [id])
+  members     TeamMember[]
+  projects    Project[]
+  auditLogs   AuditLog[]
+  
+  @@index([slug])
+  @@index([deletedAt])
+  @@map("teams")
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  role      TeamRole @default(MEMBER)
+  joinedAt  DateTime @default(now()) @map("joined_at")
+  
+  teamId    String   @map("team_id")
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+// Projects (monitoring containers)
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String
+  description String?
+  settings    Json     @default("{}")
+  isPublic    Boolean  @default(false) @map("is_public")
+  publicSlug  String?  @unique @map("public_slug")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+  
+  // Relations
+  teamId      String   @map("team_id")
+  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  monitors    Monitor[]
+  dashboards  Dashboard[]
+  
+  @@unique([teamId, slug])
+  @@index([publicSlug])
+  @@index([deletedAt])
+  @@map("projects")
+}
+
+// Monitors (websites/APIs to monitor)
+model Monitor {
+  id              String      @id @default(cuid())
+  name            String
+  url             String
+  type            MonitorType @default(HTTP)
+  method          HttpMethod  @default(GET)
+  headers         Json        @default("{}")
+  body            String?
+  interval        Int         @default(60)
+  timeout         Int         @default(30)
+  expectedStatus  Int?        @map("expected_status")
+  expectedBody    String?     @map("expected_body")
+  followRedirects Boolean     @default(true) @map("follow_redirects")
+  verifySsl       Boolean     @default(true) @map("verify_ssl")
+  isEnabled       Boolean     @default(true) @map("is_enabled")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  deletedAt       DateTime?   @map("deleted_at")
+  
+  // Relations
+  projectId       String      @map("project_id")
+  project         Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  regions         MonitorRegion[]
+  checks          MonitorCheck[]
+  incidents       Incident[]
+  sloDefinitions  SloDefinition[]
+  alertConfigs    AlertConfig[]
+  networkEvents   NetworkEvent[]
+  
+  @@index([projectId])
+  @@index([isEnabled])
+  @@index([deletedAt])
+  @@map("monitors")
+}
+
+enum MonitorType {
+  HTTP
+  HTTPS
+  TCP
+  ICMP
+}
+
+enum HttpMethod {
+  GET
+  POST
+  PUT
+  DELETE
+  PATCH
+  HEAD
+  OPTIONS
+}
+
+// Monitor Regions (global edge locations)
+model MonitorRegion {
+  id        String   @id @default(cuid())
+  region    Region
+  isEnabled Boolean  @default(true) @map("is_enabled")
+  
+  monitorId String   @map("monitor_id")
+  monitor   Monitor  @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  checks    MonitorCheck[]
+  
+  @@unique([monitorId, region])
+  @@index([monitorId])
+  @@map("monitor_regions")
+}
+
+enum Region {
+  US_EAST
+  US_WEST
+  EU_WEST
+  EU_CENTRAL
+  ASIA_SE
+  ASIA_NE
+}
+
+// Monitor Checks (time-series data)
+model MonitorCheck {
+  id              String   @id @default(cuid())
+  timestamp       DateTime @default(now())
+  status          CheckStatus
+  statusCode      Int?     @map("status_code")
+  responseTime    Int      @map("response_time")
+  responseBody    String?  @map("response_body")
+  headers         Json?
+  errorMessage    String?  @map("error_message")
+  dnsTime         Int?     @map("dns_time")
+  connectTime     Int?     @map("connect_time")
+  tlsTime         Int?     @map("tls_time")
+  ttfb            Int?     @map("ttfb")
+  
+  // Relations
+  monitorId       String   @map("monitor_id")
+  monitor         Monitor  @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  regionId        String   @map("region_id")
+  region          MonitorRegion @relation(fields: [regionId], references: [id])
+  incidentId      String?  @map("incident_id")
+  incident        Incident? @relation(fields: [incidentId], references: [id])
+  
+  @@index([monitorId, timestamp])
+  @@index([regionId, timestamp])
+  @@index([status])
+  @@index([incidentId])
+  @@map("monitor_checks")
+}
+
+enum CheckStatus {
+  UP
+  DOWN
+  DEGRADED
+  TIMEOUT
+  ERROR
+}
+
+// Incidents
+model Incident {
+  id              String        @id @default(cuid())
+  startedAt       DateTime      @default(now()) @map("started_at")
+  resolvedAt      DateTime?     @map("resolved_at")
+  duration        Int?
+  severity        IncidentSeverity @default(WARNING)
+  category        IncidentCategory?
+  title           String
+  description     String?
+  affectedRegions Region[]
+  
+  // Relations
+  monitorId       String        @map("monitor_id")
+  monitor         Monitor       @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  checks          MonitorCheck[]
+  rcaReport       RcaReport?
+  alerts          Alert[]
+  networkEvents   NetworkEvent[]
+  
+  @@index([monitorId, startedAt])
+  @@index([resolvedAt])
+  @@index([severity])
+  @@map("incidents")
+}
+
+enum IncidentSeverity {
+  CRITICAL
+  WARNING
+  INFO
+}
+
+enum IncidentCategory {
+  OUTAGE
+  DEGRADATION
+  PACKET_LOSS
+  DDOS_SUSPICION
+  NETWORK_ISSUE
+  CONFIGURATION
+  THIRD_PARTY
+  UNKNOWN
+}
+
+// Network Events (DDoS, packet loss detection)
+model NetworkEvent {
+  id              String          @id @default(cuid())
+  timestamp       DateTime        @default(now())
+  eventType       NetworkEventType
+  confidence      Float
+  signals         Json
+  description     String
+  
+  // Relations
+  incidentId      String?         @map("incident_id")
+  incident        Incident?       @relation(fields: [incidentId], references: [id])
+  monitorId       String          @map("monitor_id")
+  monitor         Monitor         @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  
+  @@index([monitorId, timestamp])
+  @@index([eventType])
+  @@map("network_events")
+}
+
+enum NetworkEventType {
+  LATENCY_SPIKE
+  TIMEOUT_SURGE
+  PACKET_LOSS
+  DDOS_HEURISTIC
+  REGION_SATURATION
+  STATUS_FLOOD
+  PARTIAL_AVAILABILITY
+}
+
+// RCA Reports (AI-generated)
+model RcaReport {
+  id              String   @id @default(cuid())
+  generatedAt     DateTime @default(now()) @map("generated_at")
+  confidence      Float
+  summary         String
+  rootCause       String   @map("root_cause")
+  evidence        Json
+  recommendations String[]
+  
+  // Relations
+  incidentId      String   @unique @map("incident_id")
+  incident        Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  
+  @@map("rca_reports")
+}
+
+// Alert Configurations
+model AlertConfig {
+  id          String      @id @default(cuid())
+  name        String
+  channelType AlertChannel
+  config      Json
+  isEnabled   Boolean     @default(true) @map("is_enabled")
+  events      AlertEvent[]
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  
+  // Relations
+  monitorId   String      @map("monitor_id")
+  monitor     Monitor     @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  alerts      Alert[]
+  
+  @@index([monitorId])
+  @@map("alert_configs")
+}
+
+enum AlertChannel {
+  WEBHOOK
+  DISCORD
+  SLACK
+  EMAIL
+}
+
+enum AlertEvent {
+  DOWNTIME
+  RECOVERY
+  ANOMALY
+  DDOS_DETECTED
+  SLO_BREACH
+  DEGRADATION
+}
+
+// Sent Alerts
+model Alert {
+  id          String      @id @default(cuid())
+  sentAt      DateTime    @default(now()) @map("sent_at")
+  status      AlertStatus @default(PENDING)
+  payload     Json
+  response    String?
+  retryCount  Int         @default(0) @map("retry_count")
+  
+  // Relations
+  configId    String      @map("config_id")
+  config      AlertConfig @relation(fields: [configId], references: [id])
+  incidentId  String?     @map("incident_id")
+  incident    Incident?   @relation(fields: [incidentId], references: [id])
+  
+  @@index([configId, sentAt])
+  @@index([incidentId])
+  @@map("alerts")
+}
+
+enum AlertStatus {
+  PENDING
+  SENT
+  FAILED
+  RETRYING
+  DELIVERED
+}
+
+// SLO Definitions
+model SloDefinition {
+  id            String    @id @default(cuid())
+  name          String
+  target        Float
+  metricType    SloMetricType
+  threshold     Int
+  windowDays    Int       @map("window_days")
+  isEnabled     Boolean   @default(true) @map("is_enabled")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  monitorId     String    @map("monitor_id")
+  monitor       Monitor   @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  windows       SloWindow[]
+  
+  @@index([monitorId])
+  @@map("slo_definitions")
+}
+
+enum SloMetricType {
+  UPTIME
+  LATENCY_P95
+  LATENCY_P99
+}
+
+// SLO Windows (rolling compliance)
+model SloWindow {
+  id            String    @id @default(cuid())
+  windowStart   DateTime  @map("window_start")
+  windowEnd     DateTime  @map("window_end")
+  achieved      Float
+  target        Float
+  errorBudget   Float     @map("error_budget")
+  burnRate      Float     @map("burn_rate")
+  isBreached    Boolean   @default(false) @map("is_breached")
+  
+  // Relations
+  sloId         String    @map("slo_id")
+  slo           SloDefinition @relation(fields: [sloId], references: [id], onDelete: Cascade)
+  
+  @@index([sloId, windowEnd])
+  @@map("slo_windows")
+}
+
+// Dashboards
+model Dashboard {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  layout      Json
+  isDefault   Boolean  @default(false) @map("is_default")
+  isShared    Boolean  @default(false) @map("is_shared")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  projectId   String   @map("project_id")
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  panels      DashboardPanel[]
+  
+  @@index([projectId])
+  @@map("dashboards")
+}
+
+// Dashboard Panels
+model DashboardPanel {
+  id          String    @id @default(cuid())
+  title       String
+  type        PanelType
+  config      Json
+  position    Json
+  query       Json
+  refreshRate Int?      @map("refresh_rate")
+  
+  // Relations
+  dashboardId String    @map("dashboard_id")
+  dashboard   Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  
+  @@index([dashboardId])
+  @@map("dashboard_panels")
+}
+
+enum PanelType {
+  TIMESERIES
+  GAUGE
+  STAT
+  HEATMAP
+  LOGS
+  TABLE
+  SLO_BURN
+  REGION_MAP
+}
+
+// Audit Logs
+model AuditLog {
+  id          String   @id @default(cuid())
+  timestamp   DateTime @default(now())
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  changes     Json?
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  
+  // Relations
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id])
+  teamId      String?  @map("team_id")
+  team        Team?    @relation(fields: [teamId], references: [id])
+  
+  @@index([teamId, timestamp])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+// Sessions (for auth)
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([token])
+  @@index([userId])
+  @@map("sessions")
+}
