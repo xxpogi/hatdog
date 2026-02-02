@@ -76,7 +76,7 @@ A production-grade, free website uptime and observability platform that rivals U
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/observability-platform.git
+git clone https://github.com/hatdog/observability-platform.git
 cd observability-platform
 ```
 
@@ -255,8 +255,8 @@ MIT License - see LICENSE file for details.
 ## Support
 
 - Documentation: [docs.observability-platform.dev](https://docs.observability-platform.dev)
-- Issues: [GitHub Issues](https://github.com/yourusername/observability-platform/issues)
-- Discussions: [GitHub Discussions](https://github.com/yourusername/observability-platform/discussions)
+- Issues: [GitHub Issues](https://github.com/hatdog/observability-platform/issues)
+- Discussions: [GitHub Discussions](https://github.com/hatdog/observability-platform/discussions)
 
 ---
 

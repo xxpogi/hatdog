@@ -12,6 +12,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { IncidentSeverity } from '@prisma/client'
+import { formatDuration, formatTimeAgo } from '@/lib/incident-formatters'
 
 interface RecentIncidentsProps {
   teamId: string
@@ -34,28 +35,6 @@ const severityConfig: Record<IncidentSeverity, { icon: any; className: string; l
   CRITICAL: { icon: XCircle, className: 'severity-critical', label: 'Critical' },
   WARNING: { icon: AlertCircle, className: 'severity-warning', label: 'Warning' },
   INFO: { icon: CheckCircle2, className: 'severity-info', label: 'Info' },
-}
-
-function formatDuration(seconds: number | null): string {
-  if (!seconds) return 'Ongoing'
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  if (hours > 0) return `${hours}h ${minutes}m`
-  return `${minutes}m`
-}
-
-function formatTimeAgo(date: string): string {
-  const now = new Date()
-  const then = new Date(date)
-  const diff = now.getTime() - then.getTime()
-  const minutes = Math.floor(diff / 60000)
-  const hours = Math.floor(diff / 3600000)
-  const days = Math.floor(diff / 86400000)
-
-  if (days > 0) return `${days}d ago`
-  if (hours > 0) return `${hours}h ago`
-  if (minutes > 0) return `${minutes}m ago`
-  return 'Just now'
 }
 
 export function RecentIncidents({ teamId }: RecentIncidentsProps) {
