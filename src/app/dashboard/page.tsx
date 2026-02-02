@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { getUserTeams } from '@/app/_actions/team.actions'
 import { DashboardShell } from '@/app/_components/dashboard-shell'
-import { OverviewStats } from '@/app/_components/overview-stats'
+import { OverviewStatsContainer } from '@/app/_components/overview-stats-container'
 import { MonitorsList } from '@/app/_components/monitors-list'
 import { RecentIncidents } from '@/app/_components/recent-incidents'
 import { TeamSelector } from '@/app/_components/team-selector'
@@ -51,7 +51,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Stats Overview */}
-        <OverviewStats teamId={defaultTeam.id} />
+        <OverviewStatsContainer teamId={defaultTeam.id} />
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

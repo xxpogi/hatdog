@@ -1,6 +1,4 @@
 'use client'
-
-import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   Monitor,
@@ -10,14 +8,12 @@ import {
   TrendingDown,
   Minus,
 } from 'lucide-react'
-import { prisma } from '@/lib/prisma'
-import { subDays } from 'date-fns'
 
 interface OverviewStatsProps {
-  teamId: string
+  stats: Stats | null
 }
 
-interface Stats {
+export interface Stats {
   totalMonitors: number
   upMonitors: number
   downMonitors: number
@@ -27,114 +23,7 @@ interface Stats {
   avgLatency: number
 }
 
-export function OverviewStats({ teamId }: OverviewStatsProps) {
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    async function fetchStats() {
-      try {
-        // Get all projects for this team
-        const projects = await prisma.project.findMany({
-          where: { teamId },
-          include: {
-            monitors: {
-              where: { deletedAt: null, isEnabled: true },
-              include: {
-                checks: {
-                  where: {
-                    timestamp: { gte: subDays(new Date(), 1) },
-                  },
-                  orderBy: { timestamp: 'desc' },
-                  take: 1,
-                },
-                incidents: {
-                  where: { resolvedAt: null },
-                },
-              },
-            },
-          },
-        })
-
-        const allMonitors = projects.flatMap(p => p.monitors)
-
-        // Calculate stats
-        const totalMonitors = allMonitors.length
-        const upMonitors = allMonitors.filter(m => m.checks[0]?.status === 'UP').length
-        const downMonitors = allMonitors.filter(
-          m => m.checks[0]?.status === 'DOWN' || m.checks[0]?.status === 'TIMEOUT'
-        ).length
-
-        // Get incidents
-        const incidents = await prisma.incident.findMany({
-          where: {
-            monitor: {
-              project: { teamId },
-            },
-            startedAt: { gte: subDays(new Date(), 30) },
-          },
-        })
-
-        const totalIncidents = incidents.length
-        const openIncidents = incidents.filter(i => !i.resolvedAt).length
-
-        // Calculate average uptime
-        const uptimeChecks = await prisma.monitorCheck.findMany({
-          where: {
-            monitor: {
-              project: { teamId },
-              deletedAt: null,
-            },
-            timestamp: { gte: subDays(new Date(), 1) },
-          },
-        })
-
-        const upCount = uptimeChecks.filter(c => c.status === 'UP').length
-        const avgUptime = uptimeChecks.length > 0 ? (upCount / uptimeChecks.length) * 100 : 100
-
-        // Calculate average latency
-        const latencyChecks = uptimeChecks.filter(c => c.status === 'UP' && c.responseTime)
-        const avgLatency =
-          latencyChecks.length > 0
-            ? latencyChecks.reduce((sum, c) => sum + c.responseTime, 0) / latencyChecks.length
-            : 0
-
-        setStats({
-          totalMonitors,
-          upMonitors,
-          downMonitors,
-          totalIncidents,
-          openIncidents,
-          avgUptime,
-          avgLatency,
-        })
-      } catch (error) {
-        console.error('Error fetching stats:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchStats()
-  }, [teamId])
-
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <div
-            key={i}
-            className="bg-card border border-border rounded-xl p-6 animate-pulse"
-          >
-            <div className="h-10 w-10 bg-muted rounded-lg mb-4" />
-            <div className="h-8 w-24 bg-muted rounded mb-2" />
-            <div className="h-4 w-16 bg-muted rounded" />
-          </div>
-        ))}
-      </div>
-    )
-  }
-
+export function OverviewStats({ stats }: OverviewStatsProps) {
   if (!stats) return null
 
   const statCards = [
